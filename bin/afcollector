@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -e -u -x
+
+LD_LIBRARY_PATH="${HOME}/.appfirst/usr/share/appfirst:${LD_LIBRARY_PATH}"
+LD_PRELOAD="${HOME}/.appfirst/usr/share/appfirst/libwrap.so.1.0.1"
+export LD_LIBRARY_PATH LD_PRELOAD
+
+$HOME/.appfirst/usr/bin/collector -d \
+  --piddir="$HOME/.appfirst/var" \
+  --datadir="$HOME/.appfirst/opt/data" \
+  &>${installPath}/log/.appfirst.log
+

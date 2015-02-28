@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+exit 0 # AppFirst should run for all containers it is included within.

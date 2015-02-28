@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+fail() { echo "\tappfirst compile !> $*" >&2; exit 1; }
+log() { echo -e "\tappfirst compile >> $*" ; }
+
+set -e -u -x
+case "$(cat /proc/version)" in
+  (*Ubuntu*) pkgExt="deb" ; arch=$(uname -m) ;;
+  (*Debian*) pkgExt="deb" ; arch=$(uname -m) ;;
+  (*RedHat*) pkgExt="rpm" ; arch=$(uname -p) ;;
+  (*CentOS*) pkgExt="rpm" ; arch=$(uname -m) ;;
+  (*) fail "Unhandled Operating System...!" ;;
+esac
+
+case "${arch}" in
+  (i686)   arch="i386" ;;
+  (i386)   arch="32"   ;;
+  (x86_64) arch="64"   ;;
+  (*)      fail "Unknown Architecture ${arch}!" ;;
+esac
+
+# bin/compile <build-dir> <cache-dir>
+buildPath=$1
+cachePath=$2
+installPath="${buildPath}/.appfirst"
+etcPath="${installPath}/etc"
+#package="http://wwws.appfirst.com/packages/updates/distrodeb/distrodeb$ARCH.$pkgExt"
+packageURL="https://www.dropbox.com/s/83oxhg14thgiwu7/distrodeb64.deb"
+packageName=$(basename ${packageURL})
+packageFile=${installPath}/${packageName}
+profileScript="${buildPath}/.profile.d/appfirst.sh"
+
+mkdir -p ${installPath}/{var,opt/data,log}
+
+[[ -s ${buildPath}/.tenantId ]] || fail ".appfirst file containing tenantId= was not found!"
+
+tenantId=$(cat ${buildPath}/.tenantId)
+
+log "Downloading ${packageURL}..."
+curl -sL ${packageURL} -o ${packageFile} 2>&1
+
+log "Extracting ${packageName} to ${installPath}..."
+case ${pkgExt} in
+  (deb)
+    dpkg -x ${packageFile} ${installPath}/
+    ;;
+  (rpm)
+    cp ${packageFile} ${installPath}
+    (
+      cd ${installPath}
+      rpm2cpio ${packageFile} | cpio -idmv
+    )
+    ;;
+esac
+rm -f ${packageFile}
+
+cp bin/afcollector ${buildPath}/.profile.d/appfirst
+
+log "Configuring AppFirst..."
+sed -i "/Tenant/c\   Tenant ${tenantId}" ${etcPath}/AppFirst.conf
+cp ${etcPath}/AppFirst.conf ${etcPath}/AppFirst
+
+log "Completed AppFirst."
